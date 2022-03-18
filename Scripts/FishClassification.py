@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[36]:
 
 
 import tensorflow as tf 
@@ -13,16 +13,17 @@ from random import shuffle
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-# In[2]:
+# In[37]:
 
 
 os.chdir('/root/fish_class')
 data_directory = os.getcwd()
 print(data_directory)
 
+
 # 1. Loading Data and Preprocessing
 
-# In[3]:
+# In[38]:
 
 
 # 20% Validation Set, 80% Training Set
@@ -37,7 +38,7 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[4]:
+# In[39]:
 
 
 # Shuffle = True randomly selects images from a random directory/class to meet the streaming batch size and send to the model for training
@@ -49,7 +50,7 @@ train_images = train_generator.flow_from_directory(
     target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
-    batch_size=128, # Will stream 64 images at a time to the model, helps to reduce RAM requirements, fine tune
+    batch_size=32,
     shuffle=True,
     seed=42,
     subset='training'
@@ -60,7 +61,7 @@ val_images = train_generator.flow_from_directory(
     target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
-    batch_size=128,
+    batch_size=32,
     shuffle=True,
     seed=42,
     subset='validation' # Will only take 20% of the total data as the validation data
@@ -71,13 +72,13 @@ test_images = test_generator.flow_from_directory(
     target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
-    batch_size=128,
+    batch_size=32,
     shuffle=True,
     seed=42
 )
 
 
-# In[5]:
+# In[40]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -85,38 +86,38 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[6]:
+# In[41]:
 
 
 train_images.class_indices
 
 
-# In[7]:
+# In[42]:
 
 
 val_images.class_indices
 
 
-# In[8]:
+# In[43]:
 
 
 test_images.class_indices
 
 
-# In[9]:
+# In[44]:
 
 
 import tensorflow.keras
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D , Flatten
+from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout
 import numpy as np
-from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping
+from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[10]:
+# In[45]:
 
 
 model = Sequential()
@@ -141,9 +142,10 @@ model.add(MaxPool2D(pool_size=(2,2),strides=(2,2)))
 model.add(Flatten())
 model.add(Dense(units=4096,activation="relu"))
 model.add(Dense(units=4096,activation="relu"))
+model.add(Dropout(0.1)) # Regularization method prior to per-class probability score (1 per node)   
 model.add(Dense(units=9, activation="softmax")) # Match number of fish classes/species (was 2 before - caused graph error)
 
-optimizer = Adam(learning_rate=0.01) # Fine tune
+optimizer = Adam(learning_rate=0.001) # Fine tune
 model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
 model.summary()
@@ -151,7 +153,7 @@ model.summary()
 
 # 3. Defining Schedulers and Callbacks
 
-# In[11]:
+# In[46]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 5) # Fine tune
@@ -160,19 +162,20 @@ monitor = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, monitor='
                                              verbose=1,save_best_only=True,
                                              save_weights_only=True,
                                              mode='min') # Only saves the best model (so far) in terms of min validation loss
-# Learning rate schedule
-def scheduler(epoch, lr): # Fine tune
-    if epoch%10 == 0: # Occurs on 10, 20, 30, 40, 50
-        lr = lr/2 
-    return lr
+# # Learning rate schedule
+# def scheduler(epoch, lr): # Fine tune
+#     if epoch%10 == 0: # Occurs on 10, 20, 30, 40, 50
+#         lr = lr/2 
+#     return lr
 
-lr_schedule = tf.keras.callbacks.LearningRateScheduler(scheduler,verbose = 1)
+# lr_schedule = tf.keras.callbacks.LearningRateScheduler(scheduler,verbose = 1)
+lr_schedule = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=5, min_lr=0.000001, verbose=1)
 callbacks = [early_stop, monitor, lr_schedule]
 
 
 # 4. Training Model
 
-# In[15]:
+# In[47]:
 
 
 model.fit( # Batch size dictated by image generators (128 in base train)
