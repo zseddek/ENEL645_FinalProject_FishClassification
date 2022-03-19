@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[31]:
 
 
 import tensorflow as tf 
@@ -13,7 +13,7 @@ from random import shuffle
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-# In[2]:
+# In[32]:
 
 
 os.chdir('/root/fish_class')
@@ -23,22 +23,37 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[3]:
+# In[48]:
 
 
 # 20% Validation Set, 80% Training Set
 # Input data is balanced across the number of fish classes
+# Following generators and preprocessing used to help generalize the model
 train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
-    preprocessing_function=tf.keras.applications.mobilenet_v2.preprocess_input, # Preprocessing function
-    validation_split=0.2 
+    rescale=1./255, # min-max Normalization, shifting pixel value to [0,1], max 255 to max of 1 (domain shift)
+    horizontal_flip=True,
+    vertical_flip=True,
+    rotation_range=40,
+    shear_range=0.2, 
+    zoom_range=0.2,
+    validation_split=0.2
 )
 
 test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
-    preprocessing_function=tf.keras.applications.mobilenet_v2.preprocess_input # Preprocessing function
+    rescale=1./255 # Apply same normalization, not performing other preprocessing steps
 )
 
+# train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+#     preprocessing_function=tf.keras.applications.vgg16.preprocess_input, # Preprocessing function
+#     validation_split=0.2 
+# )
 
-# In[16]:
+# test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+#     preprocessing_function=tf.keras.applications.vgg16.preprocess_input # Preprocessing function
+# )
+
+
+# In[52]:
 
 
 # Shuffle = True randomly selects images from a random directory/class to meet the streaming batch size and send to the model for training
@@ -73,12 +88,12 @@ test_images = test_generator.flow_from_directory(
     color_mode='rgb',
     class_mode='categorical',
     batch_size=32,
-    shuffle=False,
+    shuffle=False, # We need to be able to generate metrics at the end
     seed=42
 )
 
 
-# In[17]:
+# In[50]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -86,41 +101,39 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[18]:
+# In[51]:
 
 
 train_images.class_indices
 
 
-# In[19]:
+# In[47]:
 
 
 val_images.class_indices
 
 
-# In[20]:
+# In[38]:
 
 
 test_images.class_indices
 
 
-# In[9]:
+# In[39]:
 
 
 import tensorflow.keras
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import Sequential, Model
-from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input
-import numpy as np
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Conv2D, MaxPool2D, Flatten, Dropout, Input, BatchNormalization
 from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[10]:
+# In[40]:
 
 
-# Original VGG16 implementation, seems not be well suited for this dataset
+# VGG16 from-scratch implementation
 # input = Input(shape =(224,224,3))
 # x = Conv2D (filters =64, kernel_size =3, padding ='same', activation='relu')(input)
 # x = Conv2D (filters =64, kernel_size =3, padding ='same', activation='relu')(x)
@@ -147,22 +160,30 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 # model = Model (inputs=input, outputs =output)
 # model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy']) # Uses default LR or 0.001
 
-
-# THIS WORKS FOR SOME REASON!
-# Shallower model, simply halfing image size while doubling filters, has more parameteres but performs way better in less time
+# Novel model
 input = Input(shape =(224,224,3))
-x = Conv2D(filters=32, kernel_size=(3, 3), activation='relu')(input)
-x = MaxPool2D(2,2)(x)
-x = Conv2D(filters=64, kernel_size=(3, 3), activation='relu')(input)
-x = MaxPool2D(2,2)(x)
-x = Conv2D(filters=128, kernel_size=(3, 3), activation='relu')(input)
-x = MaxPool2D(2,2)(x)
-x = Dropout(0.2)(x)
-x = Flatten()(x)
-x = Dense(256, activation='relu')(x)
-x = Dense(256, activation='relu')(x)
-output = Dense(9, activation='softmax')(x)
-model = Model (inputs=input, outputs =output)
+l1 = Conv2D(filters=32, kernel_size=(3, 3), padding='same', activation='relu')(input)
+l2 = Conv2D(filters=32, kernel_size=(3, 3), padding='same', activation='relu')(l1)
+l3 = BatchNormalization()(l2)
+l4 = MaxPool2D(2,2)(l3)
+
+l5 = Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu')(l4)
+l6 = Conv2D(filters=64, kernel_size=(3, 3), padding='same', activation='relu')(l5)
+l7 = BatchNormalization()(l6)
+l8 = MaxPool2D(2,2)(l7)
+
+l9 = Conv2D(filters=128, kernel_size=(3, 3), padding='same', activation='relu')(l8)
+l10 = Conv2D(filters=128, kernel_size=(3, 3), padding='same', activation='relu')(l9)
+l11 = BatchNormalization()(l10)
+l12 = MaxPool2D(2,2)(l11)
+
+l13 = Flatten()(l12)
+l14 = Dense(350, activation='relu')(l13)
+l15 = Dropout(0.1)(l14)
+l16 = Dense(350, activation='relu')(l15)
+l17 = Dropout(0.2)(l16)
+output = Dense(9, activation='softmax')(l17)
+model = Model (inputs=input, outputs=output)
 model.compile(
     optimizer='adam', # Uses default LR of 0.001
     loss='categorical_crossentropy',
@@ -174,11 +195,11 @@ model.summary()
 
 # 3. Defining Schedulers and Callbacks
 
-# In[11]:
+# In[41]:
 
 
 # We should be monitoring validation loss calculation not validation accuracy in our callbacks
-early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 5) # Fine tune
+early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
 checkpoint_path = "ENEL645_FinalProject_FishClassification/training_1/cp.ckpt"
 monitor = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, monitor='val_loss',
                                              verbose=1,save_best_only=True,
@@ -191,13 +212,13 @@ monitor = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, monitor='
 #     return lr
 
 # lr_schedule = tf.keras.callbacks.LearningRateScheduler(scheduler,verbose = 1)
-lr_schedule = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=5, min_lr=0.000001, verbose=1)
+lr_schedule = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=3, min_lr=0.000001, verbose=1)
 callbacks = [early_stop, monitor, lr_schedule]
 
 
 # 4. Training Model
 
-# In[13]:
+# In[42]:
 
 
 model.fit(
@@ -222,18 +243,19 @@ print("\n************************ COMPLETED TRAINING ************************")
 
 # 5. Loading Best Model and Testing
 
-# In[15]:
+# In[19]:
 
 
 model.load_weights(checkpoint_path)
 
 
-# In[ ]:
+# In[20]:
 
 
-score, acc = model.evaluate(test_images)
-print('Test dataset loss:', score)
-print('Test dataset accuracy:', acc)
+results = model.evaluate(test_images, verbose=1)
+
+print("Test Loss: {:.5f}".format(results[0]))
+print("Test Accuracy: {:.2f}%".format(results[1] * 100))
 
 
 # In[ ]:
