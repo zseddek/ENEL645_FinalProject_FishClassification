@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[4]:
 
 
 import tensorflow as tf 
@@ -11,7 +11,7 @@ import numpy as np
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-# In[2]:
+# In[5]:
 
 
 os.chdir('/root/fish_class')
@@ -21,7 +21,7 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[58]:
+# In[6]:
 
 
 train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -34,7 +34,7 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[59]:
+# In[7]:
 
 
 train_images = train_generator.flow_from_directory(
@@ -70,7 +70,7 @@ test_images = test_generator.flow_from_directory(
 )
 
 
-# In[60]:
+# In[8]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -78,25 +78,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[61]:
+# In[9]:
 
 
 train_images.class_indices
 
 
-# In[62]:
+# In[10]:
 
 
 val_images.class_indices
 
 
-# In[63]:
+# In[11]:
 
 
 test_images.class_indices
 
 
-# In[64]:
+# In[12]:
 
 
 import tensorflow.keras
@@ -107,24 +107,30 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[92]:
+# In[13]:
 
 
 # Novel model - add descriptive layer names?
 input = Input(shape =(224,224,3))
-l1 = Conv2D(filters=32, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l=0.01))(input)
+
+l1 = Conv2D(filters=16, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l=0.001))(input)
 l2 = MaxPool2D(2,2)(l1)
 
-l3 = Conv2D(filters=64, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l=0.01))(l2)
+l3 = Conv2D(filters=32, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l=0.001))(l2)
 l4 = MaxPool2D(2,2)(l3)
 
-l5 = Conv2D(filters=128, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l=0.01))(l4)
+l5 = Conv2D(filters=64, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l=0.001))(l4)
 l6 = MaxPool2D(2,2)(l5)
 
-l7 = Flatten()(l6)
-l8 = Dense(64, activation='relu')(l7)
-l9 = Dropout(0.2)(l8)
-output = Dense(9, activation='softmax')(l9)
+l7 = Conv2D(filters=128, kernel_size=(3, 3), activation='relu', kernel_regularizer=tf.keras.regularizers.l1(l=0.001))(l6)
+l8 = MaxPool2D(2,2)(l7)
+
+l9 = Flatten()(l8)
+l10 = Dense(64, activation='relu')(l9)
+l11 = Dropout(0.25)(l10)
+l12 = Dense(32, activation='relu')(l11)
+l13 = Dropout(0.25)(l12)
+output = Dense(9, activation='softmax')(l13)
 model = Model (inputs=input, outputs=output)
 
 optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
@@ -140,7 +146,7 @@ model.summary()
 
 # 3. Defining Schedulers and Callbacks
 
-# In[93]:
+# In[14]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
@@ -156,15 +162,18 @@ callbacks = [early_stop, monitor, lr_schedule]
 
 # 4. Training Model
 
-# In[ ]:
+# In[15]:
 
 
-history = model.fit(
-    train_images, 
-    validation_data=val_images, 
-    epochs=50, # Fine tune
-    callbacks=callbacks
-)
+try:
+    history = model.fit(
+        train_images, 
+        validation_data=val_images, 
+        epochs=50, # Fine tune
+        callbacks=callbacks
+    )
+except KeyboardInterrupt:
+    print("model training terminated\n")
 
 
 # In[132]:
