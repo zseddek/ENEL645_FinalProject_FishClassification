@@ -197,7 +197,7 @@ callbacks = [early_stop, monitor, lr_schedule]
 history = model.fit(
     train_images, 
     validation_data=val_images, 
-    epochs=1, # Fine tune
+    epochs=50, # Fine tune
     callbacks=callbacks
 )
 
