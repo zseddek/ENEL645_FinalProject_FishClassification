@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[171]:
+# In[211]:
 
 
 import tensorflow as tf 
 import os
 from random import shuffle
 import numpy as np
-os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
+# os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-# In[172]:
+# In[212]:
 
 
 os.chdir('/root/fish_class')
@@ -21,7 +21,7 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[173]:
+# In[213]:
 
 
 # Potentially remove this and try again .. 
@@ -43,7 +43,7 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[174]:
+# In[214]:
 
 
 train_images = train_generator.flow_from_directory(
@@ -79,7 +79,7 @@ test_images = test_generator.flow_from_directory(
 )
 
 
-# In[175]:
+# In[215]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -87,25 +87,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[176]:
+# In[216]:
 
 
 train_images.class_indices
 
 
-# In[177]:
+# In[217]:
 
 
 val_images.class_indices
 
 
-# In[178]:
+# In[218]:
 
 
 test_images.class_indices
 
 
-# In[179]:
+# In[219]:
 
 
 import tensorflow.keras
@@ -116,7 +116,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[180]:
+# In[220]:
 
 
 # Novel model - add descriptive layer names?
@@ -143,26 +143,36 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 # model = Model (inputs=input, outputs=output)
 
 # model.summary()
+l11 = BatchNormalization()(l10)
 
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same', input_shape=(200,200,3), kernel_regularizer=tf.keras.regularizers.l2()),
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu', input_shape=(200,200,3), kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.Conv2D(32, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
+    tf.keras.layers.BatchNormalization(),
+    tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
-    tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.BatchNormalization(),
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(512, activation='relu'),
+    tf.keras.layers.Dropout(0.35),
     tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dropout(0.2),
-    tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dropout(0.25),
+    tf.keras.layers.Dense(64, activation='relu'),
+    tf.keras.layers.Dropout(0.15),
     tf.keras.layers.Dense(9, activation='softmax')
 ])
 
-optimizer = tf.keras.optimizers.RMSprop()
+optimizer = tf.keras.optimizers.Adam()
 
 model.compile(
     optimizer=optimizer,
@@ -175,7 +185,7 @@ model.summary()
 
 # # 3. Defining Schedulers and Callbacks
 
-# In[181]:
+# In[221]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
@@ -184,6 +194,7 @@ monitor = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, monitor='
                                              verbose=1,save_best_only=True,
                                              save_weights_only=True,
                                              mode='min') # Only saves the best model (so far) in terms of min validation loss
+
 def scheduler(epoch, lr):
     if epoch%10 == 0 and epoch!= 0:
         lr = lr/2
@@ -196,7 +207,7 @@ callbacks = [early_stop, monitor, lr_schedule_on_plateau,lr_schedule]
 
 # 4. Training Model
 
-# In[182]:
+# In[222]:
 
 
 try:
@@ -230,20 +241,20 @@ print("\n************************ COMPLETED TRAINING ************************")
 
 # 5. Loading Best Model and Testing
 
-# In[84]:
+# In[196]:
 
 
 model.load_weights(checkpoint_path)
 
 
-# In[133]:
+# In[195]:
 
 
 history=np.load('ENEL645_FinalProject_FishClassification/history.npy', allow_pickle='TRUE').item()
 print("Best training results:\n", history)
 
 
-# In[85]:
+# In[197]:
 
 
 results = model.evaluate(test_images, verbose=1)
