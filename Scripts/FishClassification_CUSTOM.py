@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[126]:
+# In[171]:
 
 
 import tensorflow as tf 
@@ -11,7 +11,7 @@ import numpy as np
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 
 
-# In[127]:
+# In[172]:
 
 
 os.chdir('/root/fish_class')
@@ -21,20 +21,21 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[128]:
+# In[173]:
 
 
+# Potentially remove this and try again .. 
 train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
-    rotation_range=40,
-    width_shift_range=0.2,
-    height_shift_range=0.2,
-    shear_range=0.2,
-    zoom_range=0.3,
-    horizontal_flip=True,
-    vertical_flip=True,
+    # rotation_range=40,
+    # width_shift_range=0.2,
+    # height_shift_range=0.2,
+    # shear_range=0.2,
+    # zoom_range=0.3,
+    # horizontal_flip=True,
+    # vertical_flip=True,
     rescale=1./255, # min-max Normalization, shifting pixel value to [0,1], max 255 to max of 1 (domain shift)
-    brightness_range=[0.2,1.0],
-    validation_split=0.10
+    # brightness_range=[0.2,1.0],
+    validation_split=0.20
 )
 
 test_generator = tf.keras.preprocessing.image.ImageDataGenerator(                                                    
@@ -42,7 +43,7 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[129]:
+# In[174]:
 
 
 train_images = train_generator.flow_from_directory(
@@ -78,7 +79,7 @@ test_images = test_generator.flow_from_directory(
 )
 
 
-# In[130]:
+# In[175]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -86,25 +87,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[131]:
+# In[176]:
 
 
 train_images.class_indices
 
 
-# In[132]:
+# In[177]:
 
 
 val_images.class_indices
 
 
-# In[133]:
+# In[178]:
 
 
 test_images.class_indices
 
 
-# In[134]:
+# In[179]:
 
 
 import tensorflow.keras
@@ -115,7 +116,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[145]:
+# In[180]:
 
 
 # Novel model - add descriptive layer names?
@@ -144,7 +145,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 # model.summary()
 
 model = tf.keras.models.Sequential([
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same', input_shape=(200,200,3), kernel_regularizer=tf.keras.regularizers.l1_l2(l1=0.01, l2=0.01)),
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu', padding='same', input_shape=(200,200,3), kernel_regularizer=tf.keras.regularizers.l2()),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
     tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
@@ -161,7 +162,7 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(9, activation='softmax')
 ])
 
-optimizer = tf.keras.optimizers.Adam()
+optimizer = tf.keras.optimizers.RMSprop()
 
 model.compile(
     optimizer=optimizer,
@@ -174,7 +175,7 @@ model.summary()
 
 # # 3. Defining Schedulers and Callbacks
 
-# In[146]:
+# In[181]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
@@ -195,7 +196,7 @@ callbacks = [early_stop, monitor, lr_schedule_on_plateau,lr_schedule]
 
 # 4. Training Model
 
-# In[147]:
+# In[182]:
 
 
 try:
