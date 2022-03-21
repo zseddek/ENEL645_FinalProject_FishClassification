@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[13]:
+# In[ ]:
 
 
 import tensorflow as tf 
@@ -10,7 +10,7 @@ from random import shuffle
 import numpy as np
 
 
-# In[14]:
+# In[ ]:
 
 
 os.chdir('/root/fish_class')
@@ -20,13 +20,20 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[15]:
+# In[ ]:
 
 
 # Potentially remove this and try again .. 
 train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
-    rescale=1./255, # min-max Normalization, shifting pixel value to [0,1], max 255 to max of 1 (domain shift)
-    validation_split=0.20
+   rescale=1./255,
+    horizontal_flip=True,
+    vertical_flip=True,
+    rotation_range=40,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,     
+    zoom_range=0.2,
+    validation_split=0.2
 )
 
 test_generator = tf.keras.preprocessing.image.ImageDataGenerator(                                                    
@@ -34,13 +41,13 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[16]:
+# In[ ]:
 
 
 # BATCH SIZE WAS ORIGINALLY 32
 train_images = train_generator.flow_from_directory(
     directory= './Data/Train_Val',
-    target_size=(200, 200),
+    target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
     batch_size=24,
@@ -51,7 +58,7 @@ train_images = train_generator.flow_from_directory(
 
 val_images = train_generator.flow_from_directory(
     directory= './Data/Train_Val',
-    target_size=(200, 200),
+    target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
     batch_size=24,
@@ -62,7 +69,7 @@ val_images = train_generator.flow_from_directory(
 
 test_images = test_generator.flow_from_directory(
     directory= './Data/Test',
-    target_size=(200, 200),
+    target_size=(224, 224),
     color_mode='rgb',
     class_mode='categorical',
     batch_size=24,
@@ -71,7 +78,7 @@ test_images = test_generator.flow_from_directory(
 )
 
 
-# In[17]:
+# In[ ]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -79,25 +86,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[18]:
+# In[ ]:
 
 
 train_images.class_indices
 
 
-# In[19]:
+# In[ ]:
 
 
 val_images.class_indices
 
 
-# In[20]:
+# In[ ]:
 
 
 test_images.class_indices
 
 
-# In[21]:
+# In[ ]:
 
 
 import tensorflow.keras
@@ -108,24 +115,26 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[22]:
+# In[ ]:
 
 
 model = tf.keras.models.Sequential([
     
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu',  input_shape=(200,200,3), kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
+    tf.keras.layers.Conv2D(32, (3,3), activation='relu',  input_shape=(224,224,3), kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-    tf.keras.layers.Conv2D(32, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
+    tf.keras.layers.Conv2D(32, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.Dropout(0.2),
     
     tf.keras.layers.Conv2D(64, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-    tf.keras.layers.Conv2D(64, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)),
     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
+    tf.keras.layers.Dropout(0.2),
     
     tf.keras.layers.Flatten(),
     tf.keras.layers.Dense(256, activation='relu'),
-    tf.keras.layers.Dropout(0.4),
+    tf.keras.layers.Dropout(0.35),
     tf.keras.layers.Dense(128, activation='relu'),
     tf.keras.layers.Dropout(0.25),
     tf.keras.layers.Dense(64, activation='relu'),
@@ -146,7 +155,7 @@ model.summary()
 
 # 3. Defining Schedulers and Callbacks
 
-# In[23]:
+# In[ ]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
@@ -157,25 +166,25 @@ monitor = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path, monitor='
                                              mode='min') # Only saves the best model (so far) in terms of min validation loss
 
 def scheduler(epoch, lr):
-    if epoch%5 == 0 and epoch!= 0:
-        lr = lr/1.4
+    if epoch%10 == 0 and epoch!= 0:
+        lr = lr/1.3
     return lr
 
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(scheduler,verbose = 0)
-lr_schedule_on_plateau = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=3, min_lr=0.00000001, verbose=1)
+lr_schedule_on_plateau = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=5, min_lr=0.00000001, verbose=1)
 callbacks = [early_stop, monitor, lr_schedule_on_plateau,lr_schedule]
 
 
 # 4. Training Model
 
-# In[24]:
+# In[13]:
 
 
 try:
     history = model.fit(
         train_images, 
         validation_data=val_images, 
-        epochs=35, # Fine tune
+        epochs=50, # Fine tune
         callbacks=callbacks
     )
 except KeyboardInterrupt:
