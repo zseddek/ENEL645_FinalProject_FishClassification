@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[404]:
+# In[13]:
 
 
 import tensorflow as tf 
@@ -10,7 +10,7 @@ from random import shuffle
 import numpy as np
 
 
-# In[405]:
+# In[14]:
 
 
 os.chdir('/root/fish_class')
@@ -20,7 +20,7 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[406]:
+# In[15]:
 
 
 # Potentially remove this and try again .. 
@@ -34,7 +34,7 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 )
 
 
-# In[407]:
+# In[16]:
 
 
 # BATCH SIZE WAS ORIGINALLY 32
@@ -71,7 +71,7 @@ test_images = test_generator.flow_from_directory(
 )
 
 
-# In[408]:
+# In[17]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -79,25 +79,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[409]:
+# In[18]:
 
 
 train_images.class_indices
 
 
-# In[410]:
+# In[19]:
 
 
 val_images.class_indices
 
 
-# In[411]:
+# In[20]:
 
 
 test_images.class_indices
 
 
-# In[412]:
+# In[21]:
 
 
 import tensorflow.keras
@@ -108,7 +108,7 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[413]:
+# In[22]:
 
 
 model = tf.keras.models.Sequential([
@@ -127,9 +127,9 @@ model = tf.keras.models.Sequential([
     tf.keras.layers.Dense(256, activation='relu'),
     tf.keras.layers.Dropout(0.4),
     tf.keras.layers.Dense(128, activation='relu'),
-    tf.keras.layers.Dropout(0.4),
+    tf.keras.layers.Dropout(0.25),
     tf.keras.layers.Dense(64, activation='relu'),
-    tf.keras.layers.Dropout(0.2),
+    tf.keras.layers.Dropout(0.15),
     tf.keras.layers.Dense(9, activation='softmax')
 ])
 
@@ -146,7 +146,7 @@ model.summary()
 
 # 3. Defining Schedulers and Callbacks
 
-# In[414]:
+# In[23]:
 
 
 early_stop = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience = 10) # Fine tune
@@ -168,7 +168,7 @@ callbacks = [early_stop, monitor, lr_schedule_on_plateau,lr_schedule]
 
 # 4. Training Model
 
-# In[415]:
+# In[24]:
 
 
 try:
