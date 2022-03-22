@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[27]:
+# In[56]:
 
 
 import tensorflow as tf 
@@ -14,7 +14,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 
 
-# In[28]:
+# In[57]:
 
 
 os.chdir('/data')
@@ -24,7 +24,7 @@ print("working directory:", working_directory)
 
 # 1. Loading Data and Preprocessing
 
-# In[29]:
+# In[58]:
 
 
 def make_image_df(folder):
@@ -42,51 +42,46 @@ dev_df = make_image_df('Train_Val')
 total_df = pd.concat([dev_df, test_df], axis=0)
 
 
-# In[30]:
+# In[59]:
 
 
 print(test_df.head())
 test_df.shape
 
 
-# In[31]:
+# In[60]:
 
 
 print(dev_df.head())
 dev_df.shape
 
 
-# In[32]:
+# In[61]:
 
 
 print(total_df.head())
 print(total_df.shape)
 
 
-# In[33]:
+# In[62]:
 
 
 dev_df, test_df = train_test_split(total_df, test_size=0.1, train_size=0.9, shuffle=True, random_state=42)
 train_df, val_df = train_test_split(dev_df, test_size=0.2, train_size=0.8, shuffle=True, random_state=42)
 
 
-# In[34]:
+# In[70]:
 
 
-dev_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+image_generator = tf.keras.preprocessing.image.ImageDataGenerator(
     rescale=1./255 # Could apply additional augmentation here
 )
 
-test_generator = tf.keras.preprocessing.image.ImageDataGenerator(                                                    
-    rescale=1./255 # Apply same normalization, not performing other preprocessing steps
-)
+
+# In[71]:
 
 
-# In[35]:
-
-
-# BATCH SIZE WAS ORIGINALLY 32
-train_images = dev_generator.flow_from_dataframe(
+train_images = image_generator.flow_from_dataframe(
     dataframe = train_df,
     x_col='Filepath',
     y_col='Label',
@@ -98,7 +93,7 @@ train_images = dev_generator.flow_from_dataframe(
     seed=42
 )
 
-val_images = dev_generator.flow_from_dataframe(
+val_images = image_generator.flow_from_dataframe(
     dataframe = val_df,
     x_col='Filepath',
     y_col='Label',
@@ -110,7 +105,7 @@ val_images = dev_generator.flow_from_dataframe(
     seed=42
 )
 
-test_images = test_generator.flow_from_dataframe(
+test_images = image_generator.flow_from_dataframe(
     dataframe = test_df,
     x_col='Filepath',
     y_col='Label',
@@ -123,7 +118,7 @@ test_images = test_generator.flow_from_dataframe(
 )
 
 
-# In[36]:
+# In[72]:
 
 
 print("Training image shape:", train_images.image_shape)
@@ -131,25 +126,25 @@ print("Validation image shape:", val_images.image_shape)
 print("Test image shape:", test_images.image_shape)
 
 
-# In[37]:
+# In[73]:
 
 
 train_images.class_indices
 
 
-# In[38]:
+# In[74]:
 
 
 val_images.class_indices
 
 
-# In[39]:
+# In[75]:
 
 
 test_images.class_indices
 
 
-# In[40]:
+# In[76]:
 
 
 import tensorflow.keras
@@ -160,56 +155,28 @@ from tensorflow.keras.callbacks import ModelCheckpoint, EarlyStopping, ReduceLRO
 
 # 2. Defining VGG16 (CNN) Architecture
 
-# In[51]:
+# In[78]:
 
-
-# model = tf.keras.models.Sequential([
-    
-#     tf.keras.layers.Conv2D(32, (3,3), activation='relu',  input_shape=(224,224,3), kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
-#     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-#     tf.keras.layers.Conv2D(32, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)),
-#     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-#     tf.keras.layers.Dropout(0.2),
-    
-#     tf.keras.layers.Conv2D(64, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001)),
-#     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-#     tf.keras.layers.Conv2D(64, (3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.01)),
-#     tf.keras.layers.MaxPool2D(pool_size = (2,2)),
-#     tf.keras.layers.Dropout(0.2),
-    
-#     tf.keras.layers.Flatten(),
-#     tf.keras.layers.Dense(256, activation='relu'),
-#     tf.keras.layers.Dropout(0.35),
-#     tf.keras.layers.Dense(128, activation='relu'),
-#     tf.keras.layers.Dropout(0.25),
-#     tf.keras.layers.Dense(64, activation='relu'),
-#     tf.keras.layers.Dropout(0.15),
-#     tf.keras.layers.Dense(9, activation='softmax')
-# ])
-
-# optimizer = tf.keras.optimizers.Adam()
-
-# model.compile(
-#     optimizer=optimizer,
-#     loss='categorical_crossentropy',
-#     metrics=['accuracy']
-# )
-
-# model.summary()
 
 input = Input(shape =(224,224,3))
 l1 = Conv2D(filters=128, kernel_size=(3, 3), activation='relu')(input)
 l2 = MaxPool2D(2,2)(l1)
 l3 = Dropout(0.2)(l2)
-l4 = Conv2D(filters=64, kernel_size=(3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001))(l3)
+
+# Regularizing using penalty instead of dropout (want to maintain feature extraction capabilities)
+l4 = Conv2D(filters=64, kernel_size=(3,3), activation='relu', kernel_regularizer=tf.keras.regularizers.l2(l2=0.001))(l3) 
 l5 = MaxPool2D(2,2)(l4)
 l6 = Flatten()(l5)
+
 l7 = Dense(256, activation='relu')(l6)
-l8 = Dense(256, activation='relu')(l7)
-output = Dense(9, activation='softmax')(l8)
+l8 = Dropout(0.2)(l7) # Only change after 94.9% test accuracy training run
+l9 = Dense(256, activation='relu')(l8)
+l10 = Dropout(0.2)(l9) # Only change after 94.9% test accuracy training run
+output = Dense(9, activation='softmax')(l10)
+
 model = Model (inputs=input, outputs =output)
 model.compile(
-    optimizer='adam',
+    optimizer='adam', # Starting learning rate of 0.001 (default parameter)
     loss='categorical_crossentropy',
     metrics=['accuracy']
 )
@@ -235,7 +202,7 @@ def scheduler(epoch, lr):
     return lr
 
 lr_schedule = tf.keras.callbacks.LearningRateScheduler(scheduler,verbose = 0)
-lr_schedule_on_plateau = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=5, min_lr=0.0000001, verbose=1)
+lr_schedule_on_plateau = ReduceLROnPlateau(monitor='val_loss', mode='min', factor=0.1, patience=5, min_lr=0.000001, verbose=1)
 callbacks = [early_stop, monitor, lr_schedule_on_plateau,lr_schedule]
 
 
@@ -284,14 +251,8 @@ model.load_weights(checkpoint_path)
 # In[48]:
 
 
-history=np.load('history.npy', allow_pickle='TRUE').item()
+history=np.load('history.npy', allow_pickle='TRUE').item() # Get standard scalar object
 print("Best training results:\n", history)
-
-
-# In[49]:
-
-
-history.get('val_accuracy')
 
 
 # In[55]:
