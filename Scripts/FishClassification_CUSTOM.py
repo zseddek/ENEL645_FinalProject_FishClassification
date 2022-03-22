@@ -228,15 +228,6 @@ except KeyboardInterrupt:
 np.save('history.npy', history.history)
 
 
-# In[ ]:
-
-
-model.save('Model')
-
-
-# In[ ]:
-
-
 print("\n************************ COMPLETED TRAINING ************************")
 
 
@@ -246,6 +237,8 @@ print("\n************************ COMPLETED TRAINING ************************")
 
 
 model.load_weights(checkpoint_path)
+model.save('Model')
+
 
 
 # In[48]:
