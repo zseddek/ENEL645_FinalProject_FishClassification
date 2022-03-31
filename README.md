@@ -1,3 +1,36 @@
-# Group 21 & 22
+# ENSF 645 Group 21 & 22 Final Project: Novel CNN for Fish Classification (FishNet)
 
 Dataset: https://www.kaggle.com/dataset/3edc5a44084ff30d4045620abd6fb7843bee344f3bc3a6c3e98f309e4e624657/code
+
+Image data was aquired using the Kaggle API, the directory structure once downloading all data will need to be adjusted prior to training FishNet. 
+The image data should replicate the following directory structure:
+
+```
+data
+├── Model
+├── fish_data
+│   ├── Test
+│   │   ├── Black Sea Sprat
+│   │   ├── Gilt Head Bream
+│   │   ├── Horse Mackerel
+│   │   ├── Red Mullet
+│   │   ├── Red Sea Bream
+│   │   ├── Sea Bass
+│   │   ├── Shrimp
+│   │   ├── Striped Red Mullet
+│   │   └── Trout
+│   └── Train_Val
+│       ├── Black Sea Sprat
+│       ├── Gilt Head Bream
+│       ├── Horse Mackerel
+│       ├── Red Mullet
+│       ├── Red Sea Bream
+│       ├── Sea Bass
+│       ├── Shrimp
+│       ├── Striped Red Mullet
+│       └── Trout
+└── training_1
+```
+Within each of the fish species directories (e.g. "Black Sea Sprat"), inside both the `Test` and `Train_Val` directories, there will be two sub-directories "Black Sea Sprat" and "Black Sea Sprat GT". It is important to remove the ground truth image directory, then extract all images from "Black Sea Sprat" and place in the "Black Sea Sprat" **parent directory**, then it is recommended to delete the "Black Sea Sprat" **sub directory**.
+
+Training was performed using an NVIDIA Tesla K80 GPU, it took approximately 45 minutes to reach optimum weights over 25/50 epochs.
