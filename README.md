@@ -1,6 +1,6 @@
 # ENSF 645 Group 21 & 22 Final Project: Novel CNN for Fish Classification (FishNet)
 
-Dataset: https://www.kaggle.com/dataset/3edc5a44084ff30d4045620abd6fb7843bee344f3bc3a6c3e98f309e4e624657/code
+Dataset: https://www.kaggle.com/datasets/3edc5a44084ff30d4045620abd6fb7843bee344f3bc3a6c3e98f309e4e624657
 
 Image data was aquired using the Kaggle API, the directory structure once downloading all data will need to be adjusted prior to training FishNet. 
 The image data should replicate the following directory structure:
