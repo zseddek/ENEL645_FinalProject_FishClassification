@@ -1,4 +1,4 @@
-# ENSF 645 Group 21 & 22 Final Project: Novel CNN for Fish Classification (FishNet)
+# ENEL 645 Group 21 & 22 Final Project: Novel CNN for Fish Classification (FishNet)
 
 Dataset: https://www.kaggle.com/datasets/3edc5a44084ff30d4045620abd6fb7843bee344f3bc3a6c3e98f309e4e624657
 
